@@ -1,6 +1,7 @@
 # TShirtLauncher
 
-# Lots TODO
+# Instructions
+## TODO
 
 * Purpose
 
