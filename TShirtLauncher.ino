@@ -34,7 +34,6 @@
 
 // ------ IMPORTS
 #include <FastLED.h>
-// #include <Servo.h>
 #include <FRCmotor.h>
 
 // ------   C O N S T A N T S   a n d   P I N   A S S I G N M E N T S   ------
@@ -71,7 +70,9 @@
 #define GREEN 0x008000
 #define RED 0xFF0000
 #define YELLOW 0xFFFF00
+#define ORANGE 0xFF4500
 #define BLUE 0x0000ff
+#define TEAL 0x008080
 
 // Joystick Adjustment Constants
 #define JOYSTICK_X_CENTER 512
@@ -83,8 +84,6 @@
 #define RIGHT_MOTOR_PIN 9
 
 // create servo objects to control the wheel motors
-// Servo leftSideMotor;
-// Servo rightSideMotor;
 FRCmotor leftSideMotor;
 FRCmotor rightSideMotor;
 
@@ -92,15 +91,33 @@ FRCmotor compressor;
 
 enum actionState
 {
-  POWERED,
-  READY,
-  CHARGING,
-  ARMED,
-  FIRING
+  POWERED,  // Powered but safety Switch is not pressed
+  READY,    // Safety switch depressed so drivable, but Ram rod not stored
+  CHARGING, // Not ARMED or FIRING but air compressor is running
+  ARMED,    // The Safety switch is depressed and the Ram Rod is stored
+  FIRING    // One of the cylinders is Firing
 };
 
+typedef struct
+{
+  int bottomNode; // index number of the 'bottom' pixel in the full leds array
+  int nodeCount;  // the number of pixels in this segment
+  int direction;  // how to get 'up' to the next pixel in the segment: +1 or -1
+} pixelSegment;
+
+// set-up Pixel Legs Array
+pixelSegment legs[6] =
+    {
+        {0, 12, +1},  //  0 - 11  up
+        {23, 12, -1}, // 12 - 23  down
+        {24, 12, +1}, // 24 - 35  up
+                      // 2 pixels to back light sign: 36, 37
+        {49, 12, -1}, // 38 - 49  down
+        {50, 12, +1}, // 50 - 61  up
+        {62, 12, -1}  // 62 - 73  down
+};
 // ------ VARIABLES
-int gamemode = 1; // Needed for FRCMotor
+int gamemode = 1; // Needed for FRCMotor, just do it
 
 int xPosition = 0;
 int yPosition = 0;
@@ -185,7 +202,7 @@ void loop()
   fireRightButton = digitalRead(FIRE_RIGHT_BUTTON_PIN);
   ramRodInterlock = digitalRead(RAM_ROD_INTERLOCK_PIN);
 
-  // Respond to State changes and set State conditions
+  // Respond to State changes
 
   if ((currentState == ARMED || currentState == FIRING) && fireLeftButton == LOW && firingLeft == false)
   {
@@ -213,22 +230,6 @@ void loop()
     digitalWrite(FIRE_RIGHT_SOLENOID_RELAY, LOW);
   }
 
-  if (firingLeft || firingRight)
-  {
-    currentState = FIRING;
-  }
-  else if (safetyButton == LOW && ramRodInterlock == LOW)
-  {
-    currentState = ARMED;
-  }
-  else if (safetyButton == LOW)
-  {
-    currentState = READY;
-  }
-  else
-  {
-    currentState = POWERED;
-  }
   // Master Compressor SWitch Check
   if (masterCompressorSwitchStatus == LOW)
   {
@@ -256,9 +257,26 @@ void loop()
     compressor.Set(0);
   }
 
-  if (currentState != FIRING && currentState != ARMED && compressorOn)
+  // Set state Flag
+  if (firingLeft || firingRight)
+  {
+    currentState = FIRING;
+  }
+  else if (safetyButton == LOW && ramRodInterlock == LOW)
+  {
+    currentState = ARMED;
+  }
+  else if (compressorOn)
   {
     currentState = CHARGING;
+  }
+  else if (safetyButton == LOW)
+  {
+    currentState = READY;
+  }
+  else
+  {
+    currentState = POWERED;
   }
 
   // Drive the T-Shirt Cannon
@@ -268,7 +286,7 @@ void loop()
   updateLEDs();
 
   // update Serial Monitor
-  updateLog(); // <------ C O M M E N T   O U T   f o r   P R O D U C T I O N
+  // updateLog(); // <------ C O M M E N T   O U T   f o r   P R O D U C T I O N
 
   // -- CLEAN UP LOOP
   lastState = currentState;
@@ -429,11 +447,18 @@ void updateLEDs()
   case CHARGING:
     if (lastState != CHARGING || currentMillis > lastUpdateMillis + TWINKLE_DELAY)
     {
-      fillColorWithGlitter(YELLOW);
+      fillLegs();
       lastUpdateMillis = currentMillis;
     }
     break;
-  default: // POWERED || READY
+  case READY:
+    if (lastState != READY || currentMillis > lastUpdateMillis + TWINKLE_DELAY)
+    {
+      fillColorWithGlitter(BLUE);
+      lastUpdateMillis = currentMillis;
+    }
+    break;
+  case POWERED:
     if (lastState != POWERED || currentMillis > lastUpdateMillis + TWINKLE_DELAY)
     {
       rainbowWithGlitter();
@@ -443,6 +468,41 @@ void updateLEDs()
   }
 
   FastLED.show(); // Update the LEDs
+}
+
+/**
+ * Fill up each leg of the LEDs representing the current Pressure
+ *  relative to the cutoff pressure.
+ * 
+ * If below the Compressor Kick-in pressure use Orange 
+ * once above that value make the fill Yellow
+ * 
+ * Use Blue a background color
+ */
+void fillLegs()
+{
+  int currLED;
+  uint8_t howHigh = (currentPSI / PSI_CUTOFF) * legs[0].nodeCount;
+  uint32_t fillColor;
+
+  if (currentPSI < PSI_START)
+  {
+    fillColor = ORANGE;
+  } else {
+    fillColor = YELLOW;
+  }
+
+  fill_solid(leds, NUM_LEDS, BLUE);
+
+  for (uint8_t leg = 0; leg < 6; leg++)
+  {
+    currLED = legs[leg].bottomNode;
+    for (uint8_t i = 0; i < howHigh; i++)
+    {
+      leds[currLED] = fillColor;
+      currLED = currLED + legs[leg].direction;
+    }
+  }
 }
 
 /**
@@ -458,19 +518,25 @@ void fillColorWithGlitter(uint32_t colorName)
 
 /**
  *  Fill the LEDs with a Rainbow effect
- *
  */
 void rainbow()
 {
   fill_rainbow(leds, NUM_LEDS, gHue, 7);
 }
-
+/**
+ *  Fill the rainbow effect but add Glitter
+ */
 void rainbowWithGlitter()
 {
   rainbow();
   addGlitter(80);
 }
 
+/**
+ *  Change random LEDs to White based on the chanceOfGlitter value
+ * 
+ * @param chanceOfGlitter 
+ */
 void addGlitter(fract8 chanceOfGlitter)
 {
   if (random8() < chanceOfGlitter)
@@ -479,6 +545,12 @@ void addGlitter(fract8 chanceOfGlitter)
   }
 }
 
+/**
+ * Calculate the "real" PSI based on the pressure sensor reading
+ * 
+ * @param pressure 
+ * @return double 
+ */
 double getPSI(double pressure)
 {
   return ((pressure - 73) / 8) - 3;
