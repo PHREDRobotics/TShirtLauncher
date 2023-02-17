@@ -8,12 +8,12 @@
     Master Compressor Switch: Pin 2
     LED DATA (PWM): Pin 3
     Arm Safety Button (Deadman): 4
-    Left Wheel Motor (PWM): 5
-    Right Wheel Motor (PWM): 6
+    Left Wheel Motor (PWM): 9
+    Right Wheel Motor (PWM): 10
     Fire Left Button: 7
     Fire right Button 8
-    Air Compressor Relay Pin: 9
-    Fire Left Solenoid Relay: 10
+    Air Compressor Relay Pin: 5
+    Fire Left Solenoid Relay: 6
     Fire Right Solenoid Relay: 11
     Ram Rod Interlock Pin: 12
 
@@ -22,7 +22,7 @@
     Pressure Sensor Pin: A2
 
   Controller Wiring
-    Pin 1  White Orange   Left Fire Date
+    Pin 1  White Orange   Left Fire Data
     Pin 2  Orange         Right Fire Data
     Pin 3  White Green    +5 Volts
     Pin 4  Blue           Safety Button Data
@@ -39,7 +39,7 @@
 // ------   C O N S T A N T S   a n d   P I N   A S S I G N M E N T S   ------
 // ------ Air Compressor PSI Limits
 #define PSI_CUTOFF 70      // PSI at which we shut off the air compressor
-#define PSI_START 20       // PSI below which we restart the air compressor
+#define PSI_START 65       // PSI below which we restart the air compressor
 #define SHOOT_DURATION 100 // How long to Keep Firing Solenoid Open in milliseconds
 // Buttons
 #define SAFETY_BUTTON_PIN 4
@@ -48,9 +48,11 @@
 #define FIRE_LEFT_SOLENOID_RELAY 5
 #define FIRE_RIGHT_SOLENOID_RELAY 11
 
-// Drive Joystick Input
+// Drive Joystick Input and Caps
 #define JOYSTICK_X A0
 #define JOYSTICK_Y A1
+#define MAX_SPEED 0.5
+#define MAX_TURN 0.25
 
 // Compressor
 #define MASTER_COMPRESSOR_SWITCH 2
@@ -315,12 +317,14 @@ void driveRobot()
   yPosition = analogRead(JOYSTICK_Y); // Y side of Joystick is reversed
 
   if ((xPosition < JOYSTICK_X_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW))
-  {
-    turn = map(xPosition, 1, JOYSTICK_X_CENTER - JOYSTICK_DEADZONE, -89, -1);
+  { // Left Turn
+    // ORIGINAL: turn = map(xPosition, 1, JOYSTICK_X_CENTER - JOYSTICK_DEADZONE, -89, -1);
+    turn = map(-(sq(xPosition / (float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE))), -1, 0, 1, 90) * MAX_TURN;
   }
   else if ((xPosition > JOYSTICK_X_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW))
-  {
-    turn = map(xPosition, JOYSTICK_X_CENTER + JOYSTICK_DEADZONE, 1023, 1, 90);
+  { // Right Turn
+    // ORIGINAL: turn = map(xPosition, JOYSTICK_X_CENTER + JOYSTICK_DEADZONE, 1023, 1, 90);
+    turn = map(sq(xPosition / (float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)), 0, 1, 1, 90) * MAX_TURN;
   }
   else
   {
@@ -329,11 +333,15 @@ void driveRobot()
 
   if ((yPosition < JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW))
   {
-    drive = map(yPosition, 1, JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE, -89, 1);
+  // ORIGINAL: drive = map(yPosition, 1, JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE, -89, 1);
+    drive = map(-(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE))), -1, 0, 1, 90) * MAX_SPEED;
+
   }
   else if ((yPosition > JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW))
   {
-    drive = map(yPosition, JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE, 1023, 1, 90);
+  // ORIGINAL: drive = map(yPosition, JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE, 1023, 1, 90);
+      drive = map(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE)), 0, 1, 1, 90) * MAX_SPEED;
+
   }
   else
   {
@@ -473,10 +481,10 @@ void updateLEDs()
 /**
  * Fill up each leg of the LEDs representing the current Pressure
  *  relative to the cutoff pressure.
- * 
- * If below the Compressor Kick-in pressure use Orange 
+ *
+ * If below the Compressor Kick-in pressure use Orange
  * once above that value make the fill Yellow
- * 
+ *
  * Use Blue a background color
  */
 void fillLegs()
@@ -488,7 +496,9 @@ void fillLegs()
   if (currentPSI < PSI_START)
   {
     fillColor = ORANGE;
-  } else {
+  }
+  else
+  {
     fillColor = YELLOW;
   }
 
@@ -534,8 +544,8 @@ void rainbowWithGlitter()
 
 /**
  *  Change random LEDs to White based on the chanceOfGlitter value
- * 
- * @param chanceOfGlitter 
+ *
+ * @param chanceOfGlitter
  */
 void addGlitter(fract8 chanceOfGlitter)
 {
@@ -547,9 +557,9 @@ void addGlitter(fract8 chanceOfGlitter)
 
 /**
  * Calculate the "real" PSI based on the pressure sensor reading
- * 
- * @param pressure 
- * @return double 
+ *
+ * @param pressure
+ * @return double
  */
 double getPSI(double pressure)
 {
