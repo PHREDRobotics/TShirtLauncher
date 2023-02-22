@@ -1,8 +1,8 @@
 
 /**
 
-  T-Shirt Cannon Code
-  Written by: Naman Khurana and Steve King
+  T-Shirt Launcher Code
+  Written by Steve King
 
   Wiring:
     Master Compressor Switch: Pin 2
@@ -35,6 +35,10 @@
 // ------ IMPORTS
 #include <FastLED.h>
 #include <FRCmotor.h>
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 // ------   C O N S T A N T S   a n d   P I N   A S S I G N M E N T S   ------
 // ------ Air Compressor PSI Limits
@@ -84,6 +88,17 @@
 // Wheels
 #define LEFT_MOTOR_PIN 10
 #define RIGHT_MOTOR_PIN 9
+
+// OLED Air Pressure Display
+#define SCREEN_WIDTH 128    // OLED display width, in pixels
+#define SCREEN_HEIGHT 32    // OLED display height, in pixels
+#define OLED_RESET -1       // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+//Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+// The pins for I2C are defined by the Wire-library.
+// On an arduino UNO:       A4(SDA), A5(SCL)
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // create servo objects to control the wheel motors
 FRCmotor leftSideMotor;
@@ -140,6 +155,7 @@ unsigned long currentMillis;
 unsigned long lastUpdateMillis;
 double currentPressure;
 double currentPSI;
+String currentPSIString;
 int ramRodInterlock;
 
 // --- STATE VARIABLES
@@ -154,6 +170,10 @@ actionState lastState;
 // ====== SETUP
 void setup()
 {
+  // Show initial display buffer contents on the screen --
+  // the library initializes this with an Adafruit splash screen.
+  display.display();
+
   delay(3000); // 3 - second delay on start-up to recover
 
   // -- Set-up Wheel Motors as Servo objects
@@ -184,6 +204,10 @@ void setup()
   pinMode(RAM_ROD_INTERLOCK_PIN, INPUT);
 
   Serial.begin(115200);
+  display.setTextColor(SSD1306_WHITE); // Draw white text
+  display.cp437(true);                 // Use full 256 char 'Code Page 437' font
+
+  display.clearDisplay();
 }
 
 // ====== MAIN LOOP
@@ -195,6 +219,7 @@ void loop()
   // Current Pressure
   currentPressure = analogRead(PRESSURE_SENSOR_PIN);
   currentPSI = getPSI(currentPressure);
+  displayPressure(currentPSI);
 
   // Read the Buttons and Switches
   masterCompressorSwitchStatus = digitalRead(MASTER_COMPRESSOR_SWITCH);
@@ -319,12 +344,18 @@ void driveRobot()
   if ((xPosition < JOYSTICK_X_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW))
   { // Left Turn
     // ORIGINAL: turn = map(xPosition, 1, JOYSTICK_X_CENTER - JOYSTICK_DEADZONE, -89, -1);
-    turn = map(-(sq(xPosition / (float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE))), -1, 0, 1, 90) * MAX_TURN;
+    turn = map(-(sq(xPosition) / sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE))),
+               -sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)), 0,
+               1, 90) *
+           MAX_TURN;
   }
   else if ((xPosition > JOYSTICK_X_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW))
   { // Right Turn
     // ORIGINAL: turn = map(xPosition, JOYSTICK_X_CENTER + JOYSTICK_DEADZONE, 1023, 1, 90);
-    turn = map(sq(xPosition / (float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)), 0, 1, 1, 90) * MAX_TURN;
+    turn = map(sq(xPosition) / sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)),
+               0, sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)),
+               1, 90) *
+           MAX_TURN;
   }
   else
   {
@@ -333,22 +364,20 @@ void driveRobot()
 
   if ((yPosition < JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW))
   {
-  // ORIGINAL: drive = map(yPosition, 1, JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE, -89, 1);
+    // ORIGINAL: drive = map(yPosition, 1, JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE, -89, 1);
     drive = map(-(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE))), -1, 0, 1, 90) * MAX_SPEED;
-
   }
   else if ((yPosition > JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW))
   {
-  // ORIGINAL: drive = map(yPosition, JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE, 1023, 1, 90);
-      drive = map(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE)), 0, 1, 1, 90) * MAX_SPEED;
-
+    // ORIGINAL: drive = map(yPosition, JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE, 1023, 1, 90);
+    drive = map(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE)), 0, 1, 1, 90) * MAX_SPEED;
   }
   else
   {
     drive = 0;
   }
 
-  leftWheelPower = constrain(drive + turn, -100, 100); // drive + turn +90
+  leftWheelPower = constrain(drive + turn, -100, 100); // drive + turn + 90
   rightWheelPower = constrain(drive - turn, -100, 100);
 
   // Drive Motor Settings
@@ -430,6 +459,29 @@ void updateLog()
 }
 
 /**
+ *  Routine to display the current air pressure reading on the OLED display
+ */
+void displayPressure(double pressure)
+{
+  currentPSIString = "   " + String((int)pressure);
+
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(0, 0);
+  display.print("Air");
+  display.setTextSize(1);
+  display.setCursor(0, 20);
+  display.print("Pressure:");
+
+  display.setTextSize(4);
+  display.setCursor(55, 0);
+
+  display.println(currentPSIString.substring(currentPSIString.length() - 3));
+
+  display.display();
+}
+
+/**
  *  Main routine to set the LEDs based on the current state of the Launcher
  *
  */
@@ -437,7 +489,6 @@ void updateLEDs()
 {
   switch (currentState)
   {
-
   case ARMED:
     if (lastState != ARMED || currentMillis > lastUpdateMillis + TWINKLE_DELAY)
     {

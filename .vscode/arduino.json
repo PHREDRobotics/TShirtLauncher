@@ -1,5 +1,6 @@
 {
     "board": "arduino:avr:uno",
     "port": "COM4",
-    "sketch": "TShirtLauncher.ino"
+    "sketch": "TShirtLauncher.ino",
+    "programmer": "avrisp"
 }
