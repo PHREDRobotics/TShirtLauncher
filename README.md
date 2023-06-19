@@ -34,3 +34,17 @@ Orange Base | Compressor is on and the pressure is Below the Low Pressure settin
 Yellow Base | Compressor is on, and above the Low pressure value, but not yet to Full pressure.  The height of the yellow represents the proportion
  
  
+## Leg Filling Logic
+
+Leg LEDs go logically up or down.  The leg array stores the length of each leg, the number for the "top" node, and the direction to move "down" the leg.
+
+We also store values for the minimum leg length and the number of nodes in the "top half" of the legs.
+
+The fill color is determined by if the PSI is above the PSI_START value or not. Fill all the legs with the fill color.
+
+Then for each leg, figure out what to "erase" based on the current PSI:
+
+If current PSI > PSI_START, we are adjusting above the mid-way point
+
+If not, then erase to midway and adjust further.
+  

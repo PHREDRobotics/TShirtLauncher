@@ -21,6 +21,9 @@
     Drive Joystick Y: A1
     Pressure Sensor Pin: A2
 
+    Air Pressure Display  I2C SDA: A4
+    Air Pressure Display  I2C SCL: A5
+
   Controller Wiring
     Pin 1  White Orange   Left Fire Data
     Pin 2  Orange         Right Fire Data
@@ -70,7 +73,7 @@
 
 #define NUM_LEDS 60
 #define LED_TYPE WS2811
-#define COLOR_ORDER BRG
+#define COLOR_ORDER RGB
 #define BRIGHTNESS 50
 #define TWINKLE_DELAY 20 // Milliseconds between updates
 #define GREEN 0x008000
@@ -117,21 +120,21 @@ enum actionState
 
 typedef struct
 {
-  int bottomNode; // index number of the 'bottom' pixel in the full leds array
+  int topNode; // index number of the 'top' pixel in the full leds array
   int nodeCount;  // the number of pixels in this segment
-  int direction;  // how to get 'up' to the next pixel in the segment: +1 or -1
+  int direction;  // how to get 'down' to the next pixel in the segment: +1 or -1
 } pixelSegment;
 
 // set-up Pixel Legs Array
 pixelSegment legs[6] =
     {
-        {0, 12, +1},  //  0 - 11  up
-        {23, 12, -1}, // 12 - 23  down
-        {24, 12, +1}, // 24 - 35  up
-                      // 2 pixels to back light sign: 36, 37
-        {49, 12, -1}, // 38 - 49  down
-        {50, 12, +1}, // 50 - 61  up
-        {62, 12, -1}  // 62 - 73  down
+        {27, 28, -1},  //  0 - 27    up
+        {28, 28, +1},  // 28 - 55    down
+        {80, 25, -1},  // 56 - 80    up
+                       // 2 pixels to back light sign: 81, 82
+        {83, 25, +1},  // 83 - 107   down
+        {135, 28, -1}, // 108 - 135  up
+        {163, 28, +1}  // 136 - 163  down
 };
 // ------ VARIABLES
 int gamemode = 1; // Needed for FRCMotor, just do it
@@ -144,6 +147,9 @@ int turn = 0;
 int drive = 0;
 CRGB leds[NUM_LEDS];
 uint8_t gHue = 0;
+int minLegLength = 25;
+int legTopHalfLength = 12;
+uint32_t BACKGROUND_COLOR = TEAL;
 int safetyButton = 0;
 int fireLeftButton = 0;
 int fireRightButton = 0;
@@ -531,36 +537,46 @@ void updateLEDs()
 
 /**
  * Fill up each leg of the LEDs representing the current Pressure
- *  relative to the cutoff pressure.
+ *  relative to the cutoff pressure. The tops of all the legs are
+ *  even. Use a midway point to represent below the compressor 
+ *  START value. Light up the leg proportionally for the segment/Phase
+ *  it is in: 0 - compressor start in the bottom half, compressor
+ *  start value - compressor cut off in the top half.
+ * 
+ * Legs are different lengths so calculate this based on the shortest
+ * leg and fill the bottoms of the others.
+ * 
+ * Due to the differing leg lengths, its easier to fill everything with
+ * the correct color, then go back and fill the background color down
+ * from the top (erase instead of fill)
  *
- * If below the Compressor Kick-in pressure use Orange
- * once above that value make the fill Yellow
- *
- * Use Blue a background color
+ * Use Blue as a background color
  */
 void fillLegs()
 {
   int currLED;
-  uint8_t howHigh = (currentPSI / PSI_CUTOFF) * legs[0].nodeCount;
+  uint8_t howLow;
   uint32_t fillColor;
 
-  if (currentPSI < PSI_START)
+  if (currentPSI > PSI_START) // erase down in top half only
   {
-    fillColor = ORANGE;
+    howLow = legTopHalfLength - (((currentPSI - PSI_START)/(PSI_CUTOFF - PSI_START)) * legTopHalfLength)
+    fillColor = YELLOW;
   }
   else
   {
-    fillColor = YELLOW;
+    howLow =  legTopHalfLength + ((PSI_START - currentPSI)/PSI_START) * (minLegLength-legTopHalfLength)
+    fillColor = ORANGE;
   }
 
-  fill_solid(leds, NUM_LEDS, BLUE);
+  fill_solid(leds, NUM_LEDS, fillColor);
 
   for (uint8_t leg = 0; leg < 6; leg++)
   {
-    currLED = legs[leg].bottomNode;
-    for (uint8_t i = 0; i < howHigh; i++)
+    currLED = legs[leg].topNode;
+    for (uint8_t i = 0; i < howLow; i++)
     {
-      leds[currLED] = fillColor;
+      leds[currLED] = BACKGROUND_COLOR;
       currLED = currLED + legs[leg].direction;
     }
   }
@@ -584,6 +600,7 @@ void rainbow()
 {
   fill_rainbow(leds, NUM_LEDS, gHue, 7);
 }
+
 /**
  *  Fill the rainbow effect but add Glitter
  */
