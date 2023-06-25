@@ -71,7 +71,7 @@
 // ------ LED Constants
 #define LED_DATA_PIN 3
 
-#define NUM_LEDS 60
+#define NUM_LEDS 172
 #define LED_TYPE WS2811
 #define COLOR_ORDER RGB
 #define BRIGHTNESS 50
@@ -120,7 +120,7 @@ enum actionState
 
 typedef struct
 {
-  int topNode; // index number of the 'top' pixel in the full leds array
+  int topNode;    // index number of the 'top' pixel in the full LEDs array
   int nodeCount;  // the number of pixels in this segment
   int direction;  // how to get 'down' to the next pixel in the segment: +1 or -1
 } pixelSegment;
@@ -128,13 +128,13 @@ typedef struct
 // set-up Pixel Legs Array
 pixelSegment legs[6] =
     {
-        {27, 28, -1},  //  0 - 27    up
-        {28, 28, +1},  // 28 - 55    down
-        {80, 25, -1},  // 56 - 80    up
-                       // 2 pixels to back light sign: 81, 82
-        {83, 25, +1},  // 83 - 107   down
-        {135, 28, -1}, // 108 - 135  up
-        {163, 28, +1}  // 136 - 163  down
+        {27,  28, -1},  //  0 - 27    up
+        {28,  28, +1},  // 28 - 55    down
+        {80,  25, -1},  // 56 - 80    up
+                        // 10 pixels to back light sign: 81-90
+        {91,  25, +1},  // 91 - 115   down
+        {143, 28, -1},  // 116 - 143  up
+        {171, 28, +1}   // 144 - 171  down
 };
 // ------ VARIABLES
 int gamemode = 1; // Needed for FRCMotor, just do it
@@ -546,11 +546,10 @@ void updateLEDs()
  * Legs are different lengths so calculate this based on the shortest
  * leg and fill the bottoms of the others.
  * 
- * Due to the differing leg lengths, its easier to fill everything with
+ * Due to the differing leg lengths, it's easier to fill everything with
  * the correct color, then go back and fill the background color down
  * from the top (erase instead of fill)
  *
- * Use Blue as a background color
  */
 void fillLegs()
 {
