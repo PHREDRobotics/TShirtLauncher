@@ -97,9 +97,9 @@
 #define SCREEN_HEIGHT 32    // OLED display height, in pixels
 #define OLED_RESET -1       // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-//Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-// The pins for I2C are defined by the Wire-library.
-// On an arduino UNO:       A4(SDA), A5(SCL)
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+//  The pins for I2C are defined by the Wire-library.
+//  On an arduino UNO:       A4(SDA), A5(SCL)
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -120,21 +120,21 @@ enum actionState
 
 typedef struct
 {
-  int topNode;    // index number of the 'top' pixel in the full LEDs array
-  int nodeCount;  // the number of pixels in this segment
-  int direction;  // how to get 'down' to the next pixel in the segment: +1 or -1
+  int topNode;   // index number of the 'top' pixel in the full LEDs array
+  int nodeCount; // the number of pixels in this segment
+  int direction; // how to get 'down' to the next pixel in the segment: +1 or -1
 } pixelSegment;
 
 // set-up Pixel Legs Array
 pixelSegment legs[6] =
     {
-        {27,  28, -1},  //  0 - 27    up
-        {28,  28, +1},  // 28 - 55    down
-        {80,  25, -1},  // 56 - 80    up
-                        // 10 pixels to back light sign: 81-90
-        {91,  25, +1},  // 91 - 115   down
-        {143, 28, -1},  // 116 - 143  up
-        {171, 28, +1}   // 144 - 171  down
+        {27, 28, -1},  //  0 - 27    up
+        {28, 28, +1},  // 28 - 55    down
+        {80, 25, -1},  // 56 - 80    up
+                       // 10 pixels to back light sign: 81-90
+        {91, 25, +1},  // 91 - 115   down
+        {143, 28, -1}, // 116 - 143  up
+        {171, 28, +1}  // 144 - 171  down
 };
 // ------ VARIABLES
 int gamemode = 1; // Needed for FRCMotor, just do it
@@ -538,14 +538,14 @@ void updateLEDs()
 /**
  * Fill up each leg of the LEDs representing the current Pressure
  *  relative to the cutoff pressure. The tops of all the legs are
- *  even. Use a midway point to represent below the compressor 
+ *  even. Use a midway point to represent below the compressor
  *  START value. Light up the leg proportionally for the segment/Phase
  *  it is in: 0 - compressor start in the bottom half, compressor
  *  start value - compressor cut off in the top half.
- * 
+ *
  * Legs are different lengths so calculate this based on the shortest
  * leg and fill the bottoms of the others.
- * 
+ *
  * Due to the differing leg lengths, it's easier to fill everything with
  * the correct color, then go back and fill the background color down
  * from the top (erase instead of fill)
@@ -559,12 +559,12 @@ void fillLegs()
 
   if (currentPSI > PSI_START) // erase down in top half only
   {
-    howLow = legTopHalfLength - (((currentPSI - PSI_START)/(PSI_CUTOFF - PSI_START)) * legTopHalfLength)
+    howLow = legTopHalfLength - (((currentPSI - PSI_START) / (PSI_CUTOFF - PSI_START)) * legTopHalfLength)
     fillColor = YELLOW;
   }
   else
   {
-    howLow =  legTopHalfLength + ((PSI_START - currentPSI)/PSI_START) * (minLegLength-legTopHalfLength)
+    howLow = legTopHalfLength + ((PSI_START - currentPSI) / PSI_START) * (minLegLength - legTopHalfLength)
     fillColor = ORANGE;
   }
 
