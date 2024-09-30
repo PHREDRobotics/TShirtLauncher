@@ -45,9 +45,9 @@
 
 // ------   C O N S T A N T S   a n d   P I N   A S S I G N M E N T S   ------
 // ------ Air Compressor PSI Limits
-#define PSI_CUTOFF 70      // PSI at which we shut off the air compressor
-#define PSI_START 65       // PSI below which we restart the air compressor
-#define SHOOT_DURATION 100 // How long to Keep Firing Solenoid Open in milliseconds
+#define PSI_CUTOFF 70       // PSI at which we shut off the air compressor
+#define PSI_START 65        // PSI below which we restart the air compressor
+#define SHOOT_DURATION 100  // How long to Keep Firing Solenoid Open in milliseconds
 // Buttons
 #define SAFETY_BUTTON_PIN 4
 #define FIRE_LEFT_BUTTON_PIN 7
@@ -71,11 +71,11 @@
 // ------ LED Constants
 #define LED_DATA_PIN 3
 
-#define NUM_LEDS 60
+#define NUM_LEDS 172
 #define LED_TYPE WS2811
 #define COLOR_ORDER RGB
 #define BRIGHTNESS 50
-#define TWINKLE_DELAY 20 // Milliseconds between updates
+#define TWINKLE_DELAY 20  // Milliseconds between updates
 #define GREEN 0x008000
 #define RED 0xFF0000
 #define YELLOW 0xFFFF00
@@ -93,10 +93,10 @@
 #define RIGHT_MOTOR_PIN 9
 
 // OLED Air Pressure Display
-#define SCREEN_WIDTH 128    // OLED display width, in pixels
-#define SCREEN_HEIGHT 32    // OLED display height, in pixels
-#define OLED_RESET -1       // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+#define SCREEN_WIDTH 128     // OLED display width, in pixels
+#define SCREEN_HEIGHT 32     // OLED display height, in pixels
+#define OLED_RESET -1        // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C  ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 //Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 // The pins for I2C are defined by the Wire-library.
 // On an arduino UNO:       A4(SDA), A5(SCL)
@@ -109,35 +109,33 @@ FRCmotor rightSideMotor;
 
 FRCmotor compressor;
 
-enum actionState
-{
-  POWERED,  // Powered but safety Switch is not pressed
-  READY,    // Safety switch depressed so drivable, but Ram rod not stored
-  CHARGING, // Not ARMED or FIRING but air compressor is running
-  ARMED,    // The Safety switch is depressed and the Ram Rod is stored
-  FIRING    // One of the cylinders is Firing
+enum actionState {
+  POWERED,   // Powered but safety Switch is not pressed
+  READY,     // Safety switch depressed so drivable, but Ram rod not stored
+  CHARGING,  // Not ARMED or FIRING but air compressor is running
+  ARMED,     // The Safety switch is depressed and the Ram Rod is stored
+  FIRING     // One of the cylinders is Firing
 };
 
 typedef struct
 {
-  int topNode; // index number of the 'top' pixel in the full leds array
+  int topNode;    // index number of the 'top' pixel in the full LEDs array
   int nodeCount;  // the number of pixels in this segment
   int direction;  // how to get 'down' to the next pixel in the segment: +1 or -1
 } pixelSegment;
 
 // set-up Pixel Legs Array
-pixelSegment legs[6] =
-    {
-        {27, 28, -1},  //  0 - 27    up
-        {28, 28, +1},  // 28 - 55    down
-        {80, 25, -1},  // 56 - 80    up
-                       // 2 pixels to back light sign: 81, 82
-        {83, 25, +1},  // 83 - 107   down
-        {135, 28, -1}, // 108 - 135  up
-        {163, 28, +1}  // 136 - 163  down
+pixelSegment legs[6] = {
+  { 27, 28, -1 },   //  0 - 27    up
+  { 28, 28, +1 },   // 28 - 55    down
+  { 80, 25, -1 },   // 56 - 80    up
+                    // 10 pixels to back light sign: 81-90
+  { 91, 25, +1 },   // 91 - 115   down
+  { 143, 28, -1 },  // 116 - 143  up
+  { 171, 28, +1 }   // 144 - 171  down
 };
 // ------ VARIABLES
-int gamemode = 1; // Needed for FRCMotor, just do it
+int gamemode = 1;  // Needed for FRCMotor, just do it
 
 int xPosition = 0;
 int yPosition = 0;
@@ -174,13 +172,12 @@ actionState currentState = POWERED;
 actionState lastState;
 
 // ====== SETUP
-void setup()
-{
+void setup() {
   // Show initial display buffer contents on the screen --
   // the library initializes this with an Adafruit splash screen.
   display.display();
 
-  delay(3000); // 3 - second delay on start-up to recover
+  delay(3000);  // 3 - second delay on start-up to recover
 
   // -- Set-up Wheel Motors as Servo objects
   // leftSideMotor.attach(LEFT_MOTOR_PIN);
@@ -210,16 +207,15 @@ void setup()
   pinMode(RAM_ROD_INTERLOCK_PIN, INPUT);
 
   Serial.begin(115200);
-  display.setTextColor(SSD1306_WHITE); // Draw white text
-  display.cp437(true);                 // Use full 256 char 'Code Page 437' font
+  display.setTextColor(SSD1306_WHITE);  // Draw white text
+  display.cp437(true);                  // Use full 256 char 'Code Page 437' font
 
   display.clearDisplay();
 }
 
 // ====== MAIN LOOP
 
-void loop()
-{
+void loop() {
   currentMillis = millis();
 
   // Current Pressure
@@ -237,38 +233,32 @@ void loop()
 
   // Respond to State changes
 
-  if ((currentState == ARMED || currentState == FIRING) && fireLeftButton == LOW && firingLeft == false)
-  {
+  if ((currentState == ARMED || currentState == FIRING) && fireLeftButton == LOW && firingLeft == false) {
     firingLeft = true;
     fireLeftStartTime = currentMillis;
     digitalWrite(FIRE_LEFT_SOLENOID_RELAY, HIGH);
   }
 
-  if (firingLeft && currentMillis > fireLeftStartTime + SHOOT_DURATION)
-  {
+  if (firingLeft && currentMillis > fireLeftStartTime + SHOOT_DURATION) {
     firingLeft = false;
     digitalWrite(FIRE_LEFT_SOLENOID_RELAY, LOW);
   }
 
-  if ((currentState == ARMED || currentState == FIRING) && fireRightButton == LOW && firingRight == false)
-  {
+  if ((currentState == ARMED || currentState == FIRING) && fireRightButton == LOW && firingRight == false) {
     firingRight = true;
     fireRightStartTime = currentMillis;
     digitalWrite(FIRE_RIGHT_SOLENOID_RELAY, HIGH);
   }
 
-  if (firingRight && currentMillis > fireRightStartTime + SHOOT_DURATION)
-  {
+  if (firingRight && currentMillis > fireRightStartTime + SHOOT_DURATION) {
     firingRight = false;
     digitalWrite(FIRE_RIGHT_SOLENOID_RELAY, LOW);
   }
 
   // Master Compressor SWitch Check
-  if (masterCompressorSwitchStatus == LOW)
-  {
+  if (masterCompressorSwitchStatus == LOW) {
     // REGULAR CYCLE ACTIVITIES
-    if (currentPSI <= PSI_START || !compressorCharged)
-    {
+    if (currentPSI <= PSI_START || !compressorCharged) {
       // Turn on the Compressor
       compressorOn = true;
       compressor.Set(100);
@@ -276,39 +266,27 @@ void loop()
     }
 
     // Turn Compressor Off
-    if (currentPSI >= PSI_CUTOFF)
-    {
+    if (currentPSI >= PSI_CUTOFF) {
       compressorOn = false;
       compressorCharged = true;
       compressor.Set(0);
     }
-  }
-  else
-  {
+  } else {
     // Compressor Master Switch Off
     compressorOn = false;
     compressor.Set(0);
   }
 
   // Set state Flag
-  if (firingLeft || firingRight)
-  {
+  if (firingLeft || firingRight) {
     currentState = FIRING;
-  }
-  else if (safetyButton == LOW && ramRodInterlock == LOW)
-  {
+  } else if (safetyButton == LOW && ramRodInterlock == LOW) {
     currentState = ARMED;
-  }
-  else if (compressorOn)
-  {
+  } else if (compressorOn) {
     currentState = CHARGING;
-  }
-  else if (safetyButton == LOW)
-  {
+  } else if (safetyButton == LOW) {
     currentState = READY;
-  }
-  else
-  {
+  } else {
     currentState = POWERED;
   }
 
@@ -342,48 +320,37 @@ void loop()
  *              into the range  1 to 90
  *         the center, plus/minus the deadzone maps to 90
  */
-void driveRobot()
-{
+void driveRobot() {
   xPosition = analogRead(JOYSTICK_X);
-  yPosition = analogRead(JOYSTICK_Y); // Y side of Joystick is reversed
+  yPosition = analogRead(JOYSTICK_Y);  // Y side of Joystick is reversed
 
-  if ((xPosition < JOYSTICK_X_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW))
-  { // Left Turn
+  if ((xPosition < JOYSTICK_X_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW)) {  // Left Turn
     // ORIGINAL: turn = map(xPosition, 1, JOYSTICK_X_CENTER - JOYSTICK_DEADZONE, -89, -1);
     turn = map(-(sq(xPosition) / sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE))),
                -sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)), 0,
-               1, 90) *
-           MAX_TURN;
-  }
-  else if ((xPosition > JOYSTICK_X_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW))
-  { // Right Turn
+               1, 90)
+           * MAX_TURN;
+  } else if ((xPosition > JOYSTICK_X_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW)) {  // Right Turn
     // ORIGINAL: turn = map(xPosition, JOYSTICK_X_CENTER + JOYSTICK_DEADZONE, 1023, 1, 90);
     turn = map(sq(xPosition) / sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)),
                0, sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)),
-               1, 90) *
-           MAX_TURN;
-  }
-  else
-  {
+               1, 90)
+           * MAX_TURN;
+  } else {
     turn = 0;
   }
 
-  if ((yPosition < JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW))
-  {
+  if ((yPosition < JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW)) {
     // ORIGINAL: drive = map(yPosition, 1, JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE, -89, 1);
     drive = map(-(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE))), -1, 0, 1, 90) * MAX_SPEED;
-  }
-  else if ((yPosition > JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW))
-  {
+  } else if ((yPosition > JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW)) {
     // ORIGINAL: drive = map(yPosition, JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE, 1023, 1, 90);
     drive = map(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE)), 0, 1, 1, 90) * MAX_SPEED;
-  }
-  else
-  {
+  } else {
     drive = 0;
   }
 
-  leftWheelPower = constrain(drive + turn, -100, 100); // drive + turn + 90
+  leftWheelPower = constrain(drive + turn, -100, 100);  // drive + turn + 90
   rightWheelPower = constrain(drive - turn, -100, 100);
 
   // Drive Motor Settings
@@ -397,26 +364,24 @@ void driveRobot()
  *  Routine to write the Serial Monitor lines.  SHOULD NOT
  *        be called in Production
  */
-void updateLog()
-{
+void updateLog() {
   // Log Conditions
-  switch (currentState)
-  {
-  case READY:
-    Serial.print("READY");
-    break;
-  case ARMED:
-    Serial.print("ARMED");
-    break;
-  case FIRING:
-    Serial.print("FIRING");
-    break;
-  case CHARGING:
-    Serial.print("CHARGING");
-    break;
-  case POWERED:
-    Serial.print("POWERED");
-    break;
+  switch (currentState) {
+    case READY:
+      Serial.print("READY");
+      break;
+    case ARMED:
+      Serial.print("ARMED");
+      break;
+    case FIRING:
+      Serial.print("FIRING");
+      break;
+    case CHARGING:
+      Serial.print("CHARGING");
+      break;
+    case POWERED:
+      Serial.print("POWERED");
+      break;
   }
 
   // Serial.print(safetyButton);
@@ -438,24 +403,15 @@ void updateLog()
   Serial.print(safetyButton);
 
   Serial.print("\tFire: ");
-  if (firingLeft && firingRight)
-  {
+  if (firingLeft && firingRight) {
     Serial.print(" BOTH ");
-  }
-  else if (firingLeft)
-  {
+  } else if (firingLeft) {
     Serial.print(" LEFT ");
-  }
-  else if (firingRight)
-  {
+  } else if (firingRight) {
     Serial.print(" RIGHT");
-  }
-  else if (currentState == ARMED)
-  {
+  } else if (currentState == ARMED) {
     Serial.print(" ARMED");
-  }
-  else
-  {
+  } else {
     Serial.print("      ");
   }
   Serial.print("\tPSI: ");
@@ -467,8 +423,7 @@ void updateLog()
 /**
  *  Routine to display the current air pressure reading on the OLED display
  */
-void displayPressure(double pressure)
-{
+void displayPressure(double pressure) {
   currentPSIString = "   " + String((int)pressure);
 
   display.clearDisplay();
@@ -491,48 +446,41 @@ void displayPressure(double pressure)
  *  Main routine to set the LEDs based on the current state of the Launcher
  *
  */
-void updateLEDs()
-{
-  switch (currentState)
-  {
-  case ARMED:
-    if (lastState != ARMED || currentMillis > lastUpdateMillis + TWINKLE_DELAY)
-    {
-      fillColorWithGlitter(RED);
-      lastUpdateMillis = currentMillis;
-    }
-    break;
-  case FIRING:
-    if (lastState != FIRING || currentMillis > lastUpdateMillis + TWINKLE_DELAY)
-    {
-      fillColorWithGlitter(GREEN);
-      lastUpdateMillis = currentMillis;
-    }
-    break;
-  case CHARGING:
-    if (lastState != CHARGING || currentMillis > lastUpdateMillis + TWINKLE_DELAY)
-    {
-      fillLegs();
-      lastUpdateMillis = currentMillis;
-    }
-    break;
-  case READY:
-    if (lastState != READY || currentMillis > lastUpdateMillis + TWINKLE_DELAY)
-    {
-      fillColorWithGlitter(BLUE);
-      lastUpdateMillis = currentMillis;
-    }
-    break;
-  case POWERED:
-    if (lastState != POWERED || currentMillis > lastUpdateMillis + TWINKLE_DELAY)
-    {
-      rainbowWithGlitter();
-      lastUpdateMillis = currentMillis;
-    }
-    break;
+void updateLEDs() {
+  switch (currentState) {
+    case ARMED:
+      if (lastState != ARMED || currentMillis > lastUpdateMillis + TWINKLE_DELAY) {
+        fillColorWithGlitter(RED);
+        lastUpdateMillis = currentMillis;
+      }
+      break;
+    case FIRING:
+      if (lastState != FIRING || currentMillis > lastUpdateMillis + TWINKLE_DELAY) {
+        fillColorWithGlitter(GREEN);
+        lastUpdateMillis = currentMillis;
+      }
+      break;
+    case CHARGING:
+      if (lastState != CHARGING || currentMillis > lastUpdateMillis + TWINKLE_DELAY) {
+        fillLegs();
+        lastUpdateMillis = currentMillis;
+      }
+      break;
+    case READY:
+      if (lastState != READY || currentMillis > lastUpdateMillis + TWINKLE_DELAY) {
+        fillColorWithGlitter(BLUE);
+        lastUpdateMillis = currentMillis;
+      }
+      break;
+    case POWERED:
+      if (lastState != POWERED || currentMillis > lastUpdateMillis + TWINKLE_DELAY) {
+        rainbowWithGlitter();
+        lastUpdateMillis = currentMillis;
+      }
+      break;
   }
 
-  FastLED.show(); // Update the LEDs
+  FastLED.show();  // Update the LEDs
 }
 
 /**
@@ -546,36 +494,30 @@ void updateLEDs()
  * Legs are different lengths so calculate this based on the shortest
  * leg and fill the bottoms of the others.
  * 
- * Due to the differing leg lengths, its easier to fill everything with
+ * Due to the differing leg lengths, it's easier to fill everything with
  * the correct color, then go back and fill the background color down
  * from the top (erase instead of fill)
  *
- * Use Blue as a background color
  */
-void fillLegs()
-{
+void fillLegs() {
   int currLED;
   uint8_t howLow;
   uint32_t fillColor;
 
-  if (currentPSI > PSI_START) // erase down in top half only
+  if (currentPSI > PSI_START)  // erase down in top half only
   {
-    howLow = legTopHalfLength - (((currentPSI - PSI_START)/(PSI_CUTOFF - PSI_START)) * legTopHalfLength)
+    howLow = legTopHalfLength - (((currentPSI - PSI_START) / (PSI_CUTOFF - PSI_START)) * legTopHalfLength);
     fillColor = YELLOW;
-  }
-  else
-  {
-    howLow =  legTopHalfLength + ((PSI_START - currentPSI)/PSI_START) * (minLegLength-legTopHalfLength)
+  } else {
+    howLow = legTopHalfLength + ((PSI_START - currentPSI) / PSI_START) * (minLegLength - legTopHalfLength);
     fillColor = ORANGE;
   }
 
   fill_solid(leds, NUM_LEDS, fillColor);
 
-  for (uint8_t leg = 0; leg < 6; leg++)
-  {
+  for (uint8_t leg = 0; leg < 6; leg++) {
     currLED = legs[leg].topNode;
-    for (uint8_t i = 0; i < howLow; i++)
-    {
+    for (uint8_t i = 0; i < howLow; i++) {
       leds[currLED] = BACKGROUND_COLOR;
       currLED = currLED + legs[leg].direction;
     }
@@ -587,8 +529,7 @@ void fillLegs()
  *
  * @param colorName
  */
-void fillColorWithGlitter(uint32_t colorName)
-{
+void fillColorWithGlitter(uint32_t colorName) {
   fill_solid(leds, NUM_LEDS, colorName);
   addGlitter(100);
 }
@@ -596,16 +537,14 @@ void fillColorWithGlitter(uint32_t colorName)
 /**
  *  Fill the LEDs with a Rainbow effect
  */
-void rainbow()
-{
+void rainbow() {
   fill_rainbow(leds, NUM_LEDS, gHue, 7);
 }
 
 /**
  *  Fill the rainbow effect but add Glitter
  */
-void rainbowWithGlitter()
-{
+void rainbowWithGlitter() {
   rainbow();
   addGlitter(80);
 }
@@ -615,10 +554,8 @@ void rainbowWithGlitter()
  *
  * @param chanceOfGlitter
  */
-void addGlitter(fract8 chanceOfGlitter)
-{
-  if (random8() < chanceOfGlitter)
-  {
+void addGlitter(fract8 chanceOfGlitter) {
+  if (random8() < chanceOfGlitter) {
     leds[random16(NUM_LEDS)] += CRGB::White;
   }
 }
@@ -629,7 +566,6 @@ void addGlitter(fract8 chanceOfGlitter)
  * @param pressure
  * @return double
  */
-double getPSI(double pressure)
-{
+double getPSI(double pressure) {
   return ((pressure - 73) / 8) - 3;
 }
