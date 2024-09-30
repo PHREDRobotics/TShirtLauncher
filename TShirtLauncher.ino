@@ -306,7 +306,7 @@ void loop() {
 // ------ UTILITY FUNCTIONS
 
 /**
- * Routine to read joystick and  set respective drive wheel power
+ * Routine to read joystick and set respective drive wheel power
  *
  * Note: uses JOYSTICK_Y_CENTER and JOYSTICK_X_CENTER to find the center joystick
  *       values and uses JOYSTICK_DEADZONE to ignore a range of values around that
@@ -322,16 +322,14 @@ void loop() {
  */
 void driveRobot() {
   xPosition = analogRead(JOYSTICK_X);
-  yPosition = analogRead(JOYSTICK_Y);  // Y side of Joystick is reversed
+  yPosition = analogRead(JOYSTICK_Y); 
 
   if ((xPosition < JOYSTICK_X_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW)) {  // Left Turn
-    // ORIGINAL: turn = map(xPosition, 1, JOYSTICK_X_CENTER - JOYSTICK_DEADZONE, -89, -1);
     turn = map(-(sq(xPosition) / sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE))),
                -sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)), 0,
                1, 90)
            * MAX_TURN;
   } else if ((xPosition > JOYSTICK_X_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW)) {  // Right Turn
-    // ORIGINAL: turn = map(xPosition, JOYSTICK_X_CENTER + JOYSTICK_DEADZONE, 1023, 1, 90);
     turn = map(sq(xPosition) / sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)),
                0, sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)),
                1, 90)
@@ -341,10 +339,8 @@ void driveRobot() {
   }
 
   if ((yPosition < JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW)) {
-    // ORIGINAL: drive = map(yPosition, 1, JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE, -89, 1);
     drive = map(-(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE))), -1, 0, 1, 90) * MAX_SPEED;
   } else if ((yPosition > JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW)) {
-    // ORIGINAL: drive = map(yPosition, JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE, 1023, 1, 90);
     drive = map(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE)), 0, 1, 1, 90) * MAX_SPEED;
   } else {
     drive = 0;
