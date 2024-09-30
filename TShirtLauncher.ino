@@ -148,9 +148,9 @@ uint8_t gHue = 0;
 int minLegLength = 25;
 int legTopHalfLength = 12;
 uint32_t BACKGROUND_COLOR = TEAL;
-int safetyButton = 0;
-int fireLeftButton = 0;
-int fireRightButton = 0;
+int safetyButtonPressed = 0;
+int fireLeftButtonPressed = 0;
+int fireRightButtonPressed = 0;
 unsigned long fireRightStartTime;
 unsigned long fireLeftStartTime;
 int masterCompressorSwitchStatus;
@@ -225,15 +225,15 @@ void loop() {
 
   // Read the Buttons and Switches
   masterCompressorSwitchStatus = digitalRead(MASTER_COMPRESSOR_SWITCH);
-  safetyButton = digitalRead(SAFETY_BUTTON_PIN);
+  safetyButtonPressed = digitalRead(SAFETY_BUTTON_PIN);
 
-  fireLeftButton = digitalRead(FIRE_LEFT_BUTTON_PIN);
-  fireRightButton = digitalRead(FIRE_RIGHT_BUTTON_PIN);
+  fireLeftButtonPressed = digitalRead(FIRE_LEFT_BUTTON_PIN);
+  fireRightButtonPressed = digitalRead(FIRE_RIGHT_BUTTON_PIN);
   ramRodInterlock = digitalRead(RAM_ROD_INTERLOCK_PIN);
 
   // Respond to State changes
 
-  if ((currentState == ARMED || currentState == FIRING) && fireLeftButton == LOW && firingLeft == false) {
+  if ((currentState == ARMED || currentState == FIRING) && fireLeftButtonPressed == LOW && firingLeft == false) {
     firingLeft = true;
     fireLeftStartTime = currentMillis;
     digitalWrite(FIRE_LEFT_SOLENOID_RELAY, HIGH);
@@ -244,7 +244,7 @@ void loop() {
     digitalWrite(FIRE_LEFT_SOLENOID_RELAY, LOW);
   }
 
-  if ((currentState == ARMED || currentState == FIRING) && fireRightButton == LOW && firingRight == false) {
+  if ((currentState == ARMED || currentState == FIRING) && fireRightButtonPressed == LOW && firingRight == false) {
     firingRight = true;
     fireRightStartTime = currentMillis;
     digitalWrite(FIRE_RIGHT_SOLENOID_RELAY, HIGH);
@@ -280,11 +280,11 @@ void loop() {
   // Set state Flag
   if (firingLeft || firingRight) {
     currentState = FIRING;
-  } else if (safetyButton == LOW && ramRodInterlock == LOW) {
+  } else if (safetyButtonPressed == LOW && ramRodInterlock == LOW) {
     currentState = ARMED;
   } else if (compressorOn) {
     currentState = CHARGING;
-  } else if (safetyButton == LOW) {
+  } else if (safetyButtonPressed == LOW) {
     currentState = READY;
   } else {
     currentState = POWERED;
@@ -324,12 +324,12 @@ void driveRobot() {
   xPosition = analogRead(JOYSTICK_X);
   yPosition = analogRead(JOYSTICK_Y); 
 
-  if ((xPosition < JOYSTICK_X_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW)) {  // Left Turn
+  if ((xPosition < JOYSTICK_X_CENTER - JOYSTICK_DEADZONE) && (safetyButtonPressed == LOW)) {  // Left Turn
     turn = map(-(sq(xPosition) / sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE))),
                -sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)), 0,
                1, 90)
            * MAX_TURN;
-  } else if ((xPosition > JOYSTICK_X_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW)) {  // Right Turn
+  } else if ((xPosition > JOYSTICK_X_CENTER + JOYSTICK_DEADZONE) && (safetyButtonPressed == LOW)) {  // Right Turn
     turn = map(sq(xPosition) / sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)),
                0, sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)),
                1, 90)
@@ -338,9 +338,9 @@ void driveRobot() {
     turn = 0;
   }
 
-  if ((yPosition < JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE) && (safetyButton == LOW)) {
+  if ((yPosition < JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE) && (safetyButtonPressed == LOW)) {
     drive = map(-(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE))), -1, 0, 1, 90) * MAX_SPEED;
-  } else if ((yPosition > JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE) && (safetyButton == LOW)) {
+  } else if ((yPosition > JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE) && (safetyButtonPressed == LOW)) {
     drive = map(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE)), 0, 1, 1, 90) * MAX_SPEED;
   } else {
     drive = 0;
@@ -380,11 +380,11 @@ void updateLog() {
       break;
   }
 
-  // Serial.print(safetyButton);
+  // Serial.print(safetyButtonPressed);
   // Serial.print('\t');
-  // Serial.print(fireLeftButton);
+  // Serial.print(fireLeftButtonPressed);
   // Serial.print('\t');
-  // Serial.print(fireRightButton);
+  // Serial.print(fireRightButtonPressed);
   Serial.print("\txPos: ");
   Serial.print(xPosition);
   Serial.print("\tyPos: ");
@@ -396,7 +396,7 @@ void updateLog() {
   Serial.print("\t");
   Serial.print(masterCompressorSwitchStatus);
   Serial.print(ramRodInterlock);
-  Serial.print(safetyButton);
+  Serial.print(safetyButtonPressed);
 
   Serial.print("\tFire: ");
   if (firingLeft && firingRight) {
