@@ -8,12 +8,12 @@
     Master Compressor Switch: Pin 2
     LED DATA (PWM): Pin 3
     Arm Safety Button (Deadman): 4
-    Left Wheel Motor (PWM): 9
+    Left Wheel Motor (PWM): 5
     Right Wheel Motor (PWM): 10
     Fire Left Button: 7
     Fire right Button 8
-    Air Compressor Relay Pin: 5
-    Fire Left Solenoid Relay: 6
+    Air Compressor Relay Pin (PWM): 6
+    Fire Left Solenoid Relay: 9
     Fire Right Solenoid Relay: 11
     Ram Rod Interlock Pin: 12
 
@@ -41,7 +41,7 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <SSD1306Ascii.h>
 
 // ------   C O N S T A N T S   a n d   P I N   A S S I G N M E N T S   ------
 // ------ Air Compressor PSI Limits
@@ -52,7 +52,7 @@
 #define SAFETY_BUTTON_PIN 4
 #define FIRE_LEFT_BUTTON_PIN 7
 #define FIRE_RIGHT_BUTTON_PIN 8
-#define FIRE_LEFT_SOLENOID_RELAY 5
+#define FIRE_LEFT_SOLENOID_RELAY 9
 #define FIRE_RIGHT_SOLENOID_RELAY 11
 
 // Drive Joystick Input and Caps
@@ -86,11 +86,11 @@
 // Joystick Adjustment Constants
 #define JOYSTICK_X_CENTER 512
 #define JOYSTICK_Y_CENTER 512
-#define JOYSTICK_DEADZONE 15
+#define JOYSTICK_DEADZONE 100
 
 // Wheels
-#define LEFT_MOTOR_PIN 10
-#define RIGHT_MOTOR_PIN 9
+#define LEFT_MOTOR_PIN 5
+#define RIGHT_MOTOR_PIN 10
 
 // OLED Air Pressure Display
 #define SCREEN_WIDTH 128     // OLED display width, in pixels
@@ -101,7 +101,7 @@
 // The pins for I2C are defined by the Wire-library.
 // On an arduino UNO:       A4(SDA), A5(SCL)
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+//Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // create servo objects to control the wheel motors
 FRCmotor leftSideMotor;
@@ -175,7 +175,7 @@ actionState lastState;
 void setup() {
   // Show initial display buffer contents on the screen --
   // the library initializes this with an Adafruit splash screen.
-  display.display();
+  //display.display();
 
   delay(3000);  // 3 - second delay on start-up to recover
 
@@ -204,13 +204,13 @@ void setup() {
   pinMode(MASTER_COMPRESSOR_SWITCH, INPUT_PULLUP);
   pinMode(PRESSURE_SENSOR_PIN, INPUT);
 
-  pinMode(RAM_ROD_INTERLOCK_PIN, INPUT);
+  pinMode(RAM_ROD_INTERLOCK_PIN, INPUT_PULLUP);
 
   Serial.begin(115200);
-  display.setTextColor(SSD1306_WHITE);  // Draw white text
-  display.cp437(true);                  // Use full 256 char 'Code Page 437' font
+  //display.setTextColor(SSD1306_WHITE);  // Draw white text
+  //display.cp437(true);                  // Use full 256 char 'Code Page 437' font
 
-  display.clearDisplay();
+  //display.clearDisplay();
 }
 
 // ====== MAIN LOOP
@@ -258,7 +258,7 @@ void loop() {
   // Master Compressor SWitch Check
   if (masterCompressorSwitchStatus == LOW) {
     // REGULAR CYCLE ACTIVITIES
-    if (currentPSI <= PSI_START || !compressorCharged) {
+    if (compressorCharged == false) {
       // Turn on the Compressor
       compressorOn = true;
       compressor.Set(100);
@@ -294,10 +294,10 @@ void loop() {
   driveRobot();
 
   // -- Set LEDs for Current State
-  updateLEDs();
+  //updateLEDs();
 
   // update Serial Monitor
-  // updateLog(); // <------ C O M M E N T   O U T   f o r   P R O D U C T I O N
+  //updateLog(); // <------ C O M M E N T   O U T   f o r   P R O D U C T I O N
 
   // -- CLEAN UP LOOP
   lastState = currentState;
@@ -324,7 +324,12 @@ void driveRobot() {
   xPosition = analogRead(JOYSTICK_X);
   yPosition = analogRead(JOYSTICK_Y); 
 
-  if ((xPosition < JOYSTICK_X_CENTER - JOYSTICK_DEADZONE) && (safetyButtonPressed == LOW)) {  // Left Turn
+  Serial.print("Input power: ");
+  Serial.print(xPosition);
+  Serial.print("\t");
+  Serial.println(yPosition);
+
+  /*if ((xPosition < JOYSTICK_X_CENTER - JOYSTICK_DEADZONE) && (safetyButtonPressed == LOW)) {  // Left Turn
     turn = map(-(sq(xPosition) / sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE))),
                -sq((float)(JOYSTICK_X_CENTER - JOYSTICK_DEADZONE)), 0,
                1, 90)
@@ -336,22 +341,45 @@ void driveRobot() {
            * MAX_TURN;
   } else {
     turn = 0;
-  }
+  } */
 
-  if ((yPosition < JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE) && (safetyButtonPressed == LOW)) {
-    drive = map(-(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE))), -1, 0, 1, 90) * MAX_SPEED;
+  /*if ((yPosition < JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE) && (safetyButtonPressed == LOW)) {
+    //drive = map(-(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE))), -1, 0, 1, 90) * MAX_SPEED;
+    drive = map(yPosition, 0, 0, -1, -90) * MAX_SPEED;
   } else if ((yPosition > JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE) && (safetyButtonPressed == LOW)) {
-    drive = map(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE)), 0, 1, 1, 90) * MAX_SPEED;
+    //drive = map(sq(yPosition / (float)(JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE)), 0, 1, 1, 90) * MAX_SPEED;
+    drive = map(yPosition, 0, 1, 1, 90) * MAX_SPEED;
   } else {
-    drive = 0;
-  }
+    drive = 1;
+  }*/
 
-  leftWheelPower = constrain(drive + turn, -100, 100);  // drive + turn + 90
-  rightWheelPower = constrain(drive - turn, -100, 100);
+  if (safetyButtonPressed == LOW) {
+    if (((xPosition < JOYSTICK_X_CENTER - JOYSTICK_DEADZONE) || (xPosition > JOYSTICK_X_CENTER + JOYSTICK_DEADZONE))) {
+      turn = (turn - JOYSTICK_X_CENTER) * (100/512) * MAX_SPEED;
+    } else {
+      turn = 0;
+    }
+
+    if (((yPosition < JOYSTICK_Y_CENTER - JOYSTICK_DEADZONE) || (yPosition > JOYSTICK_Y_CENTER + JOYSTICK_DEADZONE))) {
+      drive = (drive - JOYSTICK_Y_CENTER) * (100/512) * MAX_SPEED;
+    } else {
+      drive = 0;
+    }
+
+    leftWheelPower = constrain(drive + turn, -100, 100);  // drive + turn + 90
+    rightWheelPower = constrain(drive - turn, -100, 100);
+  }
 
   // Drive Motor Settings
   // leftSideMotor.write(leftWheelPower);
   // rightSideMotor.write(rightWheelPower);
+
+  Serial.print("Output power: ");
+  Serial.print(drive);
+  Serial.print("\t");
+  Serial.println(turn);
+  Serial.println();
+
   leftSideMotor.Set(leftWheelPower);
   rightSideMotor.Set(-rightWheelPower);
 }
@@ -422,7 +450,7 @@ void updateLog() {
 void displayPressure(double pressure) {
   currentPSIString = "   " + String((int)pressure);
 
-  display.clearDisplay();
+  /*display.clearDisplay();
   display.setTextSize(2);
   display.setCursor(0, 0);
   display.print("Air");
@@ -435,7 +463,7 @@ void displayPressure(double pressure) {
 
   display.println(currentPSIString.substring(currentPSIString.length() - 3));
 
-  display.display();
+  display.display();*/
 }
 
 /**
