@@ -110,10 +110,10 @@ FRCmotor rightSideMotor;
 FRCmotor compressor;
 
 enum actionState {
-  POWERED,   // Powered but safety Switch is not pressed
-  READY,     // Safety switch depressed so drivable, but Ram rod not stored
-  CHARGING,  // Not ARMED or FIRING but air compressor is running
-  ARMED,     // The Safety switch is depressed and the Ram Rod is stored
+  POWERED,   // Powered 
+  CHARGING,  // Compressor is Running
+  READY,     // Ram rod Stored, Safety Switch NOT pressed, At Pressure
+  ARMED,     // The Safety switch is depressed and the Ram Rod is stored, Pressure Above minimum
   FIRING     // One of the cylinders is Firing
 };
 
@@ -180,8 +180,6 @@ void setup() {
   delay(3000);  // 3 - second delay on start-up to recover
 
   // -- Set-up Wheel Motors as Servo objects
-  // leftSideMotor.attach(LEFT_MOTOR_PIN);
-  // rightSideMotor.attach(RIGHT_MOTOR_PIN);
   leftSideMotor.SetPort(LEFT_MOTOR_PIN);
   rightSideMotor.SetPort(RIGHT_MOTOR_PIN);
 
@@ -224,15 +222,16 @@ void loop() {
   displayPressure(currentPSI);
 
   // Read the Buttons and Switches
-  masterCompressorSwitchStatus = digitalRead(MASTER_COMPRESSOR_SWITCH);
-  safetyButtonPressed = digitalRead(SAFETY_BUTTON_PIN);
+  masterCompressorSwitchOn = (digitalRead(MASTER_COMPRESSOR_SWITCH) == LOW) ? true : false;
+  safetyButtonPressed =  (digitalRead(SAFETY_BUTTON_PIN) = LOW ) ? true : false; 
 
-  fireLeftButtonPressed = digitalRead(FIRE_LEFT_BUTTON_PIN);
-  fireRightButtonPressed = digitalRead(FIRE_RIGHT_BUTTON_PIN);
-  ramRodInterlock = digitalRead(RAM_ROD_INTERLOCK_PIN);
+  fireLeftButtonPressed =  ( digitalRead(FIRE_LEFT_BUTTON_PIN) == LOW) ? true : false;
+  fireRightButtonPressed =  ( digitalRead(FIRE_RIGHT_BUTTON_PIN) == LOW) ? true : false;
+  ramRodInterlock = ( digitalRead(RAM_ROD_INTERLOCK_PIN) == LOW) ? true : false;
 
   // Respond to State changes
 
+  // Firing? Stop or Continue
   if ((currentState == ARMED || currentState == FIRING) && fireLeftButtonPressed == LOW && firingLeft == false) {
     firingLeft = true;
     fireLeftStartTime = currentMillis;
@@ -255,10 +254,9 @@ void loop() {
     digitalWrite(FIRE_RIGHT_SOLENOID_RELAY, LOW);
   }
 
-  // Master Compressor SWitch Check
-  if (masterCompressorSwitchStatus == LOW) {
-    // REGULAR CYCLE ACTIVITIES
-    if (compressorCharged == false) {
+  // Master Compressor Switch Check
+  if (masterCompressorSwitchOn) { 
+    if (currentPSI <= PSI_START) {
       // Turn on the Compressor
       compressorOn = true;
       compressor.Set(100);
@@ -280,18 +278,20 @@ void loop() {
   // Set state Flag
   if (firingLeft || firingRight) {
     currentState = FIRING;
-  } else if (safetyButtonPressed == LOW && ramRodInterlock == LOW) {
+  } else if (safetyButtonPressed  && ramRodInterlock ) {
     currentState = ARMED;
   } else if (compressorOn) {
     currentState = CHARGING;
-  } else if (safetyButtonPressed == LOW) {
+  } else if (ramRodInterlock ) {
     currentState = READY;
   } else {
     currentState = POWERED;
   }
 
   // Drive the T-Shirt Cannon
-  driveRobot();
+  if( safetyButtonPressed  && ramRodInterlock ) {
+    driveRobot();
+  }
 
   // -- Set LEDs for Current State
   //updateLEDs();
@@ -353,7 +353,6 @@ void driveRobot() {
     drive = 1;
   }*/
 
-  if (safetyButtonPressed == LOW) {
     if (((xPosition < JOYSTICK_X_CENTER - JOYSTICK_DEADZONE) || (xPosition > JOYSTICK_X_CENTER + JOYSTICK_DEADZONE))) {
       turn = (turn - JOYSTICK_X_CENTER) * (100/512) * MAX_SPEED;
     } else {
@@ -368,7 +367,6 @@ void driveRobot() {
 
     leftWheelPower = constrain(drive + turn, -100, 100);  // drive + turn + 90
     rightWheelPower = constrain(drive - turn, -100, 100);
-  }
 
   // Drive Motor Settings
   // leftSideMotor.write(leftWheelPower);
@@ -468,6 +466,9 @@ void displayPressure(double pressure) {
 
 /**
  *  Main routine to set the LEDs based on the current state of the Launcher
+ *
+ * Note: All cases update "glitter" the first time in this state and then every
+ *       TWINKLE_DELAY after
  *
  */
 void updateLEDs() {
