@@ -40,8 +40,8 @@
 #include <FRCmotor.h>
 #include <SPI.h>
 #include <Wire.h>
-#include <Adafruit_GFX.h>
 #include <SSD1306Ascii.h>
+#include <SSD1306AsciiWire.h>
 
 // ------   C O N S T A N T S   a n d   P I N   A S S I G N M E N T S   ------
 // ------ Air Compressor PSI Limits
@@ -102,6 +102,7 @@
 // On an arduino UNO:       A4(SDA), A5(SCL)
 
 //Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+SSD1306AsciiWire display;
 
 // create servo objects to control the wheel motors
 FRCmotor leftSideMotor;
@@ -153,7 +154,7 @@ int fireLeftButtonPressed = 0;
 int fireRightButtonPressed = 0;
 unsigned long fireRightStartTime;
 unsigned long fireLeftStartTime;
-int masterCompressorSwitchStatus;
+int masterCompressorSwitchOn;
 unsigned long compressorStartTime;
 unsigned long currentMillis;
 unsigned long lastUpdateMillis;
@@ -173,9 +174,14 @@ actionState lastState;
 
 // ====== SETUP
 void setup() {
+  Wire.begin();
+  Wire.setClock(400000L);
   // Show initial display buffer contents on the screen --
   // the library initializes this with an Adafruit splash screen.
-  //display.display();
+  display.begin(&Adafruit128x32, SCREEN_ADDRESS);
+  display.setFont(System5x7);
+  display.set2X();
+  display.clear();
 
   delay(3000);  // 3 - second delay on start-up to recover
 
@@ -219,11 +225,11 @@ void loop() {
   // Current Pressure
   currentPressure = analogRead(PRESSURE_SENSOR_PIN);
   currentPSI = getPSI(currentPressure);
-  displayPressure(currentPSI);
+  updateDisplay();
 
   // Read the Buttons and Switches
   masterCompressorSwitchOn = (digitalRead(MASTER_COMPRESSOR_SWITCH) == LOW) ? true : false;
-  safetyButtonPressed =  (digitalRead(SAFETY_BUTTON_PIN) = LOW ) ? true : false; 
+  safetyButtonPressed =  (digitalRead(SAFETY_BUTTON_PIN) == LOW ) ? true : false; 
 
   fireLeftButtonPressed =  ( digitalRead(FIRE_LEFT_BUTTON_PIN) == LOW) ? true : false;
   fireRightButtonPressed =  ( digitalRead(FIRE_RIGHT_BUTTON_PIN) == LOW) ? true : false;
@@ -406,11 +412,6 @@ void updateLog() {
       break;
   }
 
-  // Serial.print(safetyButtonPressed);
-  // Serial.print('\t');
-  // Serial.print(fireLeftButtonPressed);
-  // Serial.print('\t');
-  // Serial.print(fireRightButtonPressed);
   Serial.print("\txPos: ");
   Serial.print(xPosition);
   Serial.print("\tyPos: ");
@@ -420,7 +421,7 @@ void updateLog() {
   Serial.print("\tRight: ");
   Serial.print(rightWheelPower);
   Serial.print("\t");
-  Serial.print(masterCompressorSwitchStatus);
+  Serial.print(masterCompressorSwitchOn);
   Serial.print(ramRodInterlock);
   Serial.print(safetyButtonPressed);
 
@@ -445,23 +446,12 @@ void updateLog() {
 /**
  *  Routine to display the current air pressure reading on the OLED display
  */
-void displayPressure(double pressure) {
-  currentPSIString = "   " + String((int)pressure);
+void updateDisplay() {
+  display.clear();
+  display.println("   " + String((int)currentPSI));
+  display.print("    " + String(currentState));
 
-  /*display.clearDisplay();
-  display.setTextSize(2);
-  display.setCursor(0, 0);
-  display.print("Air");
-  display.setTextSize(1);
-  display.setCursor(0, 20);
-  display.print("Pressure:");
-
-  display.setTextSize(4);
-  display.setCursor(55, 0);
-
-  display.println(currentPSIString.substring(currentPSIString.length() - 3));
-
-  display.display();*/
+  //display.print("Hello world");
 }
 
 /**
